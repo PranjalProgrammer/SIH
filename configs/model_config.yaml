@@ -1,0 +1,133 @@
+# Precision Agriculture Platform - Model Configuration
+
+# Data Configuration
+data:
+  hyperspectral:
+    bands: 200
+    wavelength_range: [400, 2500]  # nm
+    spatial_resolution: [32, 32]   # height, width
+    patch_size: 32
+  
+  sensor:
+    features: 15
+    sampling_rate: "1H"  # hourly
+    window_size: 24      # 24-hour windows
+  
+  temporal:
+    sequence_length: 12  # 12 time steps
+    step_size: 6         # 6-hour steps
+
+# Model Architecture
+model:
+  type: "crop_health"  # crop_health, multimodal, ensemble
+  
+  cnn:
+    type: "feature_extractor"  # feature_extractor, resnet, attention
+    hidden_dim: 256
+    dropout: 0.3
+    
+  lstm:
+    hidden_dim: 128
+    num_layers: 2
+    bidirectional: true
+    attention_type: "additive"  # additive, multiplicative, scaled_dot
+    dropout: 0.3
+  
+  classifier:
+    n_classes: 3  # healthy, stressed, diseased
+    hidden_dim: 64
+
+# Training Configuration
+training:
+  # Optimization
+  optimizer: "adam"
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  batch_size: 32
+  epochs: 100
+  
+  # Scheduling
+  scheduler:
+    type: "reduce_on_plateau"
+    patience: 10
+    factor: 0.5
+  
+  # Early stopping
+  early_stopping:
+    patience: 20
+    min_delta: 0.001
+  
+  # Loss function
+  loss:
+    type: "focal"  # focal, cross_entropy
+    alpha: 1.0
+    gamma: 2.0
+  
+  # Data augmentation
+  augmentation:
+    spectral_jitter: 0.1
+    spatial_rotation: true
+    noise_level: 0.02
+    temporal_shift: true
+    probability: 0.5
+
+# Validation Configuration
+validation:
+  split_ratio: 0.2
+  cross_validation:
+    k_folds: 5
+    stratified: true
+  
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1_score
+    - auc
+
+# Hyperparameter Optimization
+hyperparameter_tuning:
+  enabled: true
+  method: "bayesian"  # bayesian, grid, random
+  n_trials: 50
+  
+  search_space:
+    learning_rate: [0.0001, 0.001, 0.01]
+    batch_size: [16, 32, 64]
+    cnn_hidden_dim: [128, 256, 512]
+    lstm_hidden_dim: [64, 128, 256]
+    dropout: [0.1, 0.3, 0.5]
+    attention_type: ["additive", "multiplicative", "scaled_dot"]
+
+# Hardware Configuration
+hardware:
+  device: "auto"  # auto, cpu, cuda
+  mixed_precision: true
+  num_workers: 4
+  pin_memory: true
+
+# Logging and Monitoring
+logging:
+  level: "INFO"
+  save_logs: true
+  log_dir: "/workspace/logs"
+  
+  wandb:
+    enabled: false
+    project: "precision_agriculture"
+    entity: "your_team"
+  
+  tensorboard:
+    enabled: true
+    log_dir: "/workspace/runs"
+
+# Model Saving
+model_saving:
+  save_dir: "/workspace/models"
+  save_best: true
+  save_last: true
+  save_frequency: 10  # epochs
+  
+  checkpoint:
+    include_optimizer: true
+    include_scheduler: true
