@@ -1,0 +1,119 @@
+# Model Configuration for Precision Agriculture Platform
+
+models:
+  cnn_crop_health:
+    type: "CNN"
+    architecture: "CropHealthCNN"
+    input_channels: 3
+    num_classes: 5
+    pretrained: false
+    checkpoint_path: "/app/models/cnn_crop_health.pth"
+    
+  hyperspectral_cnn:
+    type: "CNN"
+    architecture: "HyperspectralCNN"
+    num_bands: 200
+    num_classes: 5
+    checkpoint_path: "/app/models/hyperspectral_cnn.pth"
+    
+  sensor_lstm:
+    type: "LSTM"
+    architecture: "SensorLSTM"
+    input_size: 7
+    hidden_size: 128
+    num_layers: 2
+    output_size: 5
+    checkpoint_path: "/app/models/sensor_lstm.pth"
+    
+  hybrid_model:
+    type: "Hybrid"
+    architecture: "CNNLSTMHybrid"
+    image_channels: 3
+    sensor_features: 7
+    num_classes: 5
+    cnn_features: 512
+    lstm_hidden: 128
+    checkpoint_path: "/app/models/hybrid_model.pth"
+    
+  multimodal_fusion:
+    type: "Multimodal"
+    architecture: "MultiModalFusion"
+    hyperspectral_bands: 200
+    rgb_channels: 3
+    sensor_features: 7
+    weather_features: 10
+    num_classes: 5
+    checkpoint_path: "/app/models/multimodal_fusion.pth"
+
+training:
+  batch_size: 32
+  learning_rate: 0.001
+  num_epochs: 100
+  weight_decay: 0.0001
+  patience: 10
+  
+  optimizer:
+    type: "Adam"
+    betas: [0.9, 0.999]
+    eps: 1e-8
+    
+  scheduler:
+    type: "ReduceLROnPlateau"
+    mode: "min"
+    factor: 0.5
+    patience: 5
+    min_lr: 1e-6
+    
+  augmentation:
+    enabled: true
+    horizontal_flip: 0.5
+    vertical_flip: 0.3
+    rotation: 15
+    brightness: 0.2
+    contrast: 0.2
+    
+data:
+  train_split: 0.7
+  val_split: 0.2
+  test_split: 0.1
+  
+  preprocessing:
+    resize: [224, 224]
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+    
+class_names:
+  - "Healthy"
+  - "Disease"
+  - "Pest"
+  - "Nutrient Deficiency"
+  - "Water Stress"
+  
+evaluation:
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1_score"
+    - "auc"
+  
+  cross_validation:
+    enabled: true
+    folds: 5
+    
+deployment:
+  model_server:
+    pool_size: 3
+    batch_processing: true
+    max_batch_size: 8
+    max_wait_time: 0.1
+    
+  caching:
+    enabled: true
+    ttl: 3600  # seconds
+    
+  monitoring:
+    performance_threshold: 0.9
+    drift_detection: true
+    alert_threshold: 3
