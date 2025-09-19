@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # Main Application Service
+  precision-agriculture-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: precision-ag-platform
+    ports:
+      - "5000:5000"    # Flask API
+      - "8080:8080"    # Dashboard
+      - "8888:8888"    # Jupyter (optional)
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    environment:
+      - FLASK_ENV=production
+      - PYTHONPATH=/app
+      - MODEL_PATH=/app/models
+      - DATA_PATH=/app/data
+    networks:
+      - precision-ag-network
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: precision-ag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - precision-ag-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # PostgreSQL for metadata and results storage
+  postgres:
+    image: postgres:14-alpine
+    container_name: precision-ag-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=precision_agriculture
+      - POSTGRES_USER=agri_user
+      - POSTGRES_PASSWORD=agri_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - precision-ag-network
+    restart: unless-stopped
+
+  # InfluxDB for time-series sensor data
+  influxdb:
+    image: influxdb:2.6-alpine
+    container_name: precision-ag-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=sensor_data
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin_password
+      - INFLUXDB_USER=sensor_user
+      - INFLUXDB_USER_PASSWORD=sensor_password
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    networks:
+      - precision-ag-network
+    restart: unless-stopped
+
+  # MQTT Broker for IoT sensor communication
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: precision-ag-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    networks:
+      - precision-ag-network
+    restart: unless-stopped
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: precision-ag-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    networks:
+      - precision-ag-network
+    depends_on:
+      - precision-agriculture-app
+    restart: unless-stopped
+
+  # Jupyter Notebook for development (optional)
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: precision-ag-jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/app/notebooks
+      - ./data:/app/data
+      - ./src:/app/src
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    networks:
+      - precision-ag-network
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+    restart: unless-stopped
+
+networks:
+  precision-ag-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  influxdb_data:
+  mosquitto_data:
+  mosquitto_logs:
