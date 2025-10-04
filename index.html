@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NASA TEMPO Air Quality Monitor</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="app-styles.css">
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <h1><i class="fas fa-satellite"></i> NASA TEMPO Air Quality Monitor</h1>
+                <p>Real-time air quality data from NASA's TEMPO satellite</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Controls Panel -->
+                <div class="controls-panel">
+                    <div class="control-group">
+                        <label for="pollutant-select">Pollutant:</label>
+                        <select id="pollutant-select">
+                            <option value="NO2">Nitrogen Dioxide (NO₂)</option>
+                            <option value="O3">Ozone (O₃)</option>
+                            <option value="HCHO">Formaldehyde (HCHO)</option>
+                            <option value="SO2">Sulfur Dioxide (SO₂)</option>
+                            <option value="CO">Carbon Monoxide (CO)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <button id="refresh-btn" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i> Refresh Data
+                        </button>
+                        <button id="clear-locations-btn" class="btn btn-secondary">
+                            <i class="fas fa-trash"></i> Clear Locations
+                        </button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="status-indicator">
+                            <span id="status-text">Loading...</span>
+                            <div id="status-dot" class="status-dot"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Container -->
+                <div class="map-container">
+                    <div id="map"></div>
+                    
+                    <!-- Legend -->
+                    <div class="legend">
+                        <h4>Air Quality Index</h4>
+                        <div class="legend-item">
+                            <div class="legend-color good"></div>
+                            <span>Good (0-50)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color moderate"></div>
+                            <span>Moderate (51-100)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div="legend-color unhealthy-sensitive"></div>
+                            <span>Unhealthy for Sensitive Groups (101-150)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color unhealthy"></div>
+                            <span>Unhealthy (151-200)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color very-unhealthy"></div>
+                            <span>Very Unhealthy (201-300)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color hazardous"></div>
+                            <span>Hazardous (301+)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Panel -->
+                <div class="data-panel">
+                    <div class="data-stats">
+                        <div class="stat-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span id="data-points-count">0</span>
+                            <small>Data Points</small>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-clock"></i>
+                            <span id="last-update">Never</span>
+                            <small>Last Update</small>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-bookmark"></i>
+                            <span id="saved-locations-count">0</span>
+                            <small>Saved Locations</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <p>&copy; 2024 NASA TEMPO Air Quality Monitor. Data provided by NASA.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="app-script.js"></script>
+</body>
+</html>

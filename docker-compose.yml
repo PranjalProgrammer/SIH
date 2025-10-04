@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  nasa-tempo-backend:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - S3_BUCKET=${S3_BUCKET:-nasa-tempo-air-quality}
+      - FLASK_ENV=production
+    volumes:
+      - ./downloads:/app/downloads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nasa-tempo-frontend:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html
+      - ./app-styles.css:/usr/share/nginx/html/app-styles.css
+      - ./app-script.js:/usr/share/nginx/html/app-script.js
+    depends_on:
+      - nasa-tempo-backend
+    restart: unless-stopped
+
+networks:
+  default:
+    name: nasa-tempo-network
