@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NASA TEMPO Air Quality Monitor</title>
+    <link rel="stylesheet" href="app-styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Fix for default markers in Leaflet
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        });
+
+        const AirQualityMap = () => {
+            const mapRef = useRef(null);
+            const mapInstanceRef = useRef(null);
+            const [airQualityData, setAirQualityData] = useState(null);
+            const [selectedPollutant, setSelectedPollutant] = useState('NO2');
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [userLocations, setUserLocations] = useState([]);
+            const [showLocationForm, setShowLocationForm] = useState(false);
+            const [newLocation, setNewLocation] = useState({ name: '', latitude: '', longitude: '' });
+
+            // API base URL
+            const API_BASE_URL = process.env?.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+            // Initialize map
+            useEffect(() => {
+                if (mapRef.current && !mapInstanceRef.current) {
+                    mapInstanceRef.current = L.map(mapRef.current).setView([39.8283, -98.5795], 4);
+                    
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(mapInstanceRef.current);
+
+                    // Add click handler for location pinning
+                    mapInstanceRef.current.on('click', handleMapClick);
+                }
+
+                return () => {
+                    if (mapInstanceRef.current) {
+                        mapInstanceRef.current.remove();
+                        mapInstanceRef.current = null;
+                    }
+                };
+            }, []);
+
+            // Fetch air quality data
+            useEffect(() => {
+                fetchAirQualityData();
+                const interval = setInterval(fetchAirQualityData, 3600000); // Update every hour
+                return () => clearInterval(interval);
+            }, []);
+
+            // Update map when data or pollutant selection changes
+            useEffect(() => {
+                if (airQualityData && mapInstanceRef.current) {
+                    updateMapWithData();
+                }
+            }, [airQualityData, selectedPollutant]);
+
+            const fetchAirQualityData = async () => {
+                try {
+                    setLoading(true);
+                    const response = await fetch(`${API_BASE_URL}/air-quality`);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch air quality data');
+                    }
+                    const data = await response.json();
+                    setAirQualityData(data);
+                    setError(null);
+                } catch (err) {
+                    setError(err.message);
+                    console.error('Error fetching air quality data:', err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const updateMapWithData = () => {
+                if (!mapInstanceRef.current || !airQualityData) return;
+
+                // Clear existing markers
+                mapInstanceRef.current.eachLayer(layer => {
+                    if (layer instanceof L.CircleMarker) {
+                        mapInstanceRef.current.removeLayer(layer);
+                    }
+                });
+
+                const pollutantData = airQualityData.pollutants?.[selectedPollutant];
+                if (!pollutantData) return;
+
+                // Add markers for each data point
+                pollutantData.features.forEach(feature => {
+                    const { coordinates, properties } = feature.geometry;
+                    const { value, aqi_category } = properties;
+                    
+                    const color = getAQIColor(aqi_category);
+                    const radius = Math.max(3, Math.min(15, value / 10)); // Scale radius based on value
+
+                    const marker = L.circleMarker([coordinates[1], coordinates[0]], {
+                        radius: radius,
+                        fillColor: color,
+                        color: '#000',
+                        weight: 1,
+                        opacity: 0.8,
+                        fillOpacity: 0.6
+                    });
+
+                    marker.bindPopup(`
+                        <div>
+                            <h4>${selectedPollutant} Air Quality</h4>
+                            <p><strong>Value:</strong> ${value.toFixed(2)} ${properties.unit}</p>
+                            <p><strong>Category:</strong> ${aqi_category}</p>
+                            <p><strong>Location:</strong> ${coordinates[1].toFixed(4)}, ${coordinates[0].toFixed(4)}</p>
+                        </div>
+                    `);
+
+                    marker.addTo(mapInstanceRef.current);
+                });
+            };
+
+            const getAQIColor = (category) => {
+                const colors = {
+                    'Good': '#00e400',
+                    'Moderate': '#ffff00',
+                    'Unhealthy for Sensitive Groups': '#ff7e00',
+                    'Unhealthy': '#ff0000',
+                    'Very Unhealthy': '#8f3f97',
+                    'Hazardous': '#7e0023'
+                };
+                return colors[category] || '#808080';
+            };
+
+            const handleMapClick = (e) => {
+                const { lat, lng } = e.latlng;
+                setNewLocation({
+                    name: '',
+                    latitude: lat.toFixed(6),
+                    longitude: lng.toFixed(6)
+                });
+                setShowLocationForm(true);
+            };
+
+            const saveLocation = async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/locations`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            name: newLocation.name,
+                            latitude: parseFloat(newLocation.latitude),
+                            longitude: parseFloat(newLocation.longitude)
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to save location');
+                    }
+
+                    const result = await response.json();
+                    setUserLocations([...userLocations, result.location]);
+                    setShowLocationForm(false);
+                    setNewLocation({ name: '', latitude: '', longitude: '' });
+                    
+                    // Add marker for saved location
+                    const marker = L.marker([result.location.latitude, result.location.longitude], {
+                        icon: L.divIcon({
+                            className: 'custom-marker',
+                            html: '<div style="background-color: #007bff; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 12px;">📍</div>',
+                            iconSize: [20, 20]
+                        })
+                    });
+                    
+                    marker.bindPopup(`
+                        <div>
+                            <h4>${result.location.name}</h4>
+                            <p><strong>Saved Location</strong></p>
+                            <p>Lat: ${result.location.latitude}</p>
+                            <p>Lng: ${result.location.longitude}</p>
+                        </div>
+                    `);
+                    
+                    marker.addTo(mapInstanceRef.current);
+                    
+                } catch (err) {
+                    setError(err.message);
+                    console.error('Error saving location:', err);
+                }
+            };
+
+            const getAvailablePollutants = () => {
+                if (!airQualityData?.pollutants) return [];
+                return Object.keys(airQualityData.pollutants);
+            };
+
+            return (
+                <div className="air-quality-app">
+                    <header className="app-header">
+                        <h1>NASA TEMPO Air Quality Monitor</h1>
+                        <div className="controls">
+                            <select 
+                                value={selectedPollutant} 
+                                onChange={(e) => setSelectedPollutant(e.target.value)}
+                                className="pollutant-selector"
+                            >
+                                {getAvailablePollutants().map(pollutant => (
+                                    <option key={pollutant} value={pollutant}>
+                                        {pollutant}
+                                    </option>
+                                ))}
+                            </select>
+                            <button onClick={fetchAirQualityData} disabled={loading} className="refresh-btn">
+                                {loading ? 'Loading...' : 'Refresh Data'}
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="map-container">
+                        <div ref={mapRef} className="map" />
+                        
+                        {showLocationForm && (
+                            <div className="location-form-overlay">
+                                <div className="location-form">
+                                    <h3>Save Location</h3>
+                                    <input
+                                        type="text"
+                                        placeholder="Location name"
+                                        value={newLocation.name}
+                                        onChange={(e) => setNewLocation({...newLocation, name: e.target.value})}
+                                        className="form-input"
+                                    />
+                                    <div className="coordinates">
+                                        <span>Lat: {newLocation.latitude}</span>
+                                        <span>Lng: {newLocation.longitude}</span>
+                                    </div>
+                                    <div className="form-buttons">
+                                        <button onClick={saveLocation} className="save-btn">Save</button>
+                                        <button onClick={() => setShowLocationForm(false)} className="cancel-btn">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="info-panel">
+                        <div className="data-info">
+                            <h3>Data Information</h3>
+                            {airQualityData ? (
+                                <div>
+                                    <p><strong>Source:</strong> {airQualityData.metadata?.source}</p>
+                                    <p><strong>Resolution:</strong> {airQualityData.metadata?.resolution}</p>
+                                    <p><strong>Coverage:</strong> {airQualityData.metadata?.coverage}</p>
+                                    <p><strong>Last Update:</strong> {new Date(airQualityData.timestamp).toLocaleString()}</p>
+                                    <p><strong>Selected Pollutant:</strong> {selectedPollutant}</p>
+                                    {airQualityData.pollutants?.[selectedPollutant] && (
+                                        <p><strong>Data Points:</strong> {airQualityData.pollutants[selectedPollutant].features.length}</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <p>No data available</p>
+                            )}
+                        </div>
+
+                        <div className="legend">
+                            <h3>Air Quality Legend</h3>
+                            <div className="legend-items">
+                                <div className="legend-item">
+                                    <div className="legend-color" style={{backgroundColor: '#00e400'}}></div>
+                                    <span>Good</span>
+                                </div>
+                                <div className="legend-item">
+                                    <div className="legend-color" style={{backgroundColor: '#ffff00'}}></div>
+                                    <span>Moderate</span>
+                                </div>
+                                <div className="legend-item">
+                                    <div className="legend-color" style={{backgroundColor: '#ff7e00'}}></div>
+                                    <span>Unhealthy for Sensitive Groups</span>
+                                </div>
+                                <div className="legend-item">
+                                    <div className="legend-color" style={{backgroundColor: '#ff0000'}}></div>
+                                    <span>Unhealthy</span>
+                                </div>
+                                <div className="legend-item">
+                                    <div className="legend-color" style={{backgroundColor: '#8f3f97'}}></div>
+                                    <span>Very Unhealthy</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="instructions">
+                            <h3>Instructions</h3>
+                            <ul>
+                                <li>Click on the map to pin and save your location</li>
+                                <li>Use the dropdown to switch between different pollutants</li>
+                                <li>Click on markers to see detailed air quality information</li>
+                                <li>Data updates automatically every hour</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="error-message">
+                            <p>Error: {error}</p>
+                            <button onClick={() => setError(null)}>Dismiss</button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(<AirQualityMap />, document.getElementById('root'));
+    </script>
+</body>
+</html>
