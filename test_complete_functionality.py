@@ -16,7 +16,7 @@ def test_backend_api():
     """Test backend API functionality"""
     print("Testing Backend API...")
     
-    base_url = "http://localhost:5001"
+    base_url = "http://localhost:5000"
     
     # Test health endpoint
     try:
@@ -211,12 +211,12 @@ def main():
     
     # Check if backend is running
     try:
-        response = requests.get("http://localhost:5001/health", timeout=2)
+        response = requests.get("http://localhost:5000/health", timeout=2)
         if response.status_code != 200:
-            print("✗ Backend not running. Please start with: PORT=5001 python3 flask-backend.py")
+            print("✗ Backend not running. Please start with: python3 flask-backend.py")
             return False
     except:
-        print("✗ Backend not running. Please start with: PORT=5001 python3 flask-backend.py")
+        print("✗ Backend not running. Please start with: python3 flask-backend.py")
         return False
     
     # Run all tests

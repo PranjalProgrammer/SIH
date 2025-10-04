@@ -13,9 +13,9 @@ import numpy as np
 try:
     import xarray as xr
     HAS_XARRAY = True
-except ImportError:
+except (ImportError, AttributeError) as e:
     HAS_XARRAY = False
-    print("Warning: xarray not available. Using mock data for demonstration.")
+    print(f"Warning: xarray not available ({e}). Using mock data for demonstration.")
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
