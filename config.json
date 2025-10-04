@@ -1,0 +1,15 @@
+{
+  "nasa_api_key": "YOUR_NASA_API_KEY_HERE",
+  "earthdata_username": "YOUR_EARTHDATA_USERNAME_HERE",
+  "earthdata_password": "YOUR_EARTHDATA_PASSWORD_HERE",
+  "aws_access_key_id": "YOUR_AWS_ACCESS_KEY_ID_HERE",
+  "aws_secret_access_key": "YOUR_AWS_SECRET_ACCESS_KEY_HERE",
+  "aws_region": "us-east-1",
+  "s3_bucket": "your-tempo-data-bucket",
+  "download_dir": "./downloads",
+  "date_range_days": 7,
+  "tempo_data_types": ["NO2", "O3", "HCHO"],
+  "max_granules_per_type": 10,
+  "download_timeout": 300,
+  "retry_attempts": 3
+}
