@@ -1,0 +1,10 @@
+Flask>=2.3.0
+Flask-CORS>=4.0.0
+boto3>=1.28.0
+requests>=2.31.0
+numpy>=1.24.0
+# Optional packages for NetCDF processing
+# xarray>=2023.7.0
+# netCDF4>=1.6.4
+# pandas>=2.0.0
+# gunicorn>=21.0.0

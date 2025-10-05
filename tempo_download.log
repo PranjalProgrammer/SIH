@@ -1,0 +1,6 @@
+2025-10-04 11:08:40,369 - INFO - Configuration loaded from config.json
+2025-10-04 11:08:40,370 - INFO - Using explicit AWS credentials from config
+2025-10-04 11:08:40,829 - ERROR - S3 setup failed: An error occurred (403) when calling the HeadBucket operation: Forbidden
+2025-10-04 11:08:40,832 - WARNING - No S3 bucket configured - data will only be downloaded locally
+2025-10-04 11:08:40,836 - INFO - Downloading TEMPO data from 2025-09-27 to 2025-10-04
+2025-10-04 11:08:40,972 - ERROR - API request failed: 403 Client Error: Forbidden for url: https://api.nasa.gov/planetary/apod?api_key=YOUR_NASA_API_KEY_HERE&start_date=2025-09-27&end_date=2025-10-04&count=100
